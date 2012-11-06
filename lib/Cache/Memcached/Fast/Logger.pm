@@ -1,0 +1,125 @@
+package Cache::Memcached::Fast::Logger;
+
+use strict;
+use warnings;
+
+our $VERSION = 0.1;
+
+sub new {
+    my ( $class, %opts ) = @_;
+
+    bless \%opts, $class;
+
+    \%opts;
+}
+
+sub log {
+    my ( $self, $log ) = @_;
+
+    $self->{cache}->add( 'log_counter', "0" );
+    $self->{cache}->set( "log_" . $self->{cache}->incr('log_counter'), $log );
+}
+
+sub read_all {
+    my ( $self, $sub ) = @_;
+
+    my $start = 0;
+    my $cache = $self->{cache};
+    my ( $log, $ret );
+
+    TERMINATE: while (1) {
+	my ($lc) = $cache->gets('log_counter');
+	last unless defined $lc;
+
+	for ( my $i = $start; $i <= $lc->[1]; $i++ ) {
+	    $sub->($log) && ( $cache->delete("log_$i"), 1 ) || last TERMINATE
+	      if ( defined( $log = $cache->get("log_$i") ) );
+	}
+
+	$ret = $cache->cas( 'log_counter', $lc->[0], "0" );
+	last if ! defined($ret) || $ret;
+
+	# If we are here so some other process has modified a log queue
+	# We try reparse queue again
+
+	$start = $lc->[1] + 1;
+    }
+}
+
+1;
+__END__
+
+=pod
+
+=head1 NAME
+
+Cache::Memcached::Fast::Logger - the simple logger object for writing and
+reading all log items to/from memcached
+
+=head1 SYNOPSIS
+
+    my $logger = Cache::Memcached::Fast::Logger->new( cache => Cache::Memcached::Fast->new(...) );
+
+    # one or more processes log items to memcached like this:
+    $logger->log( { key1 => 'value1', keys2 => 'value2' } );
+
+    # Other process - a parser of logs items reads all items by:
+    $logger->read_all( sub { $item = shift; ... ; 1 } );
+
+=head1 DESCRIPTION
+
+Why this module? Sometime i need in helper for logging and parsing some
+statistics. To write in file a logs for parsing is very bad idea - I/O of HDD is
+very slow.
+
+With this module many concurrent proccesses can write to memcached by L</log> method
+and one process (for example a parser of logs) can read all logs in FIFO order
+from memcached by L</read_all> method. This module is simple and it uses
+atomic L<Cache::Memcached::Fast/incr> & L<Cache::Memcached::Fast/cas>
+memcached's protocol methods (for internal counter of queue) for guarantee that
+all your items will not be lost during write phase in memcached (memcached
+doesn't guarantee a data keeping but if your cache has an enough free slabs you
+will not lose your log items)
+
+=head1 CONSTRUCTOR
+
+    my $logger = Cache::Memcached::Fast::Logger->new( cache => $cache )
+
+Only B<cache> option used and should be instance of L<Cache::Memcached::Fast>
+object. All options of memcached specific features should be
+defined by creation of L<Cache::Memcached::Fast> instance.
+
+=head1 METHODS
+
+=over
+
+=item log( $log_item )
+
+C<$log_item> cab be scalar, hashref or arrayref. It's serialized by
+L<Cache::Memcached::Fast>.
+
+=item read_all( $cb )
+
+C<$cb> is callback function (parser of one log item). It is called (by this way
+C<< $cb->( $log_item ) >>) for every item of log item written to memcached. This
+function should be return C<true> to continue a parsing and C<false> if callback
+wants to terminate a log reading proccess (if it catched a I<TERM> signal for
+example). This method is executed to complete reading log items in memcached.
+
+=back
+
+=head1 NOTES
+
+This module uses a following keys for log items: I<log_counter> & I<log_N>,
+where N is positive number from 0 to max integer of perl. You can use
+L<Cache::Memcached::Fast/namespace> option or method to isolate these keys from
+your other keys.
+
+=head1 AUTHOR
+
+This module has been written by Perlover <perlover@perlover.com>, 2012 year
+
+=head1 LICENSE
+
+This module is free software and is published under the same terms as Perl
+itself.
