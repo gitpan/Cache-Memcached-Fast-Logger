@@ -3,7 +3,7 @@ package Cache::Memcached::Fast::Logger;
 use strict;
 use warnings;
 
-our $VERSION = 0.1;
+our $VERSION = 0.11;
 
 sub new {
     my ( $class, %opts ) = @_;
@@ -102,16 +102,20 @@ L<Cache::Memcached::Fast>.
 
 C<$cb> is callback function (parser of one log item). It is called (by this way
 C<< $cb->( $log_item ) >>) for every item of log item written to memcached. This
-function should be return C<true> to continue a parsing and C<false> if callback
-wants to terminate a log reading proccess (if it catched a I<TERM> signal for
-example). This method is executed to complete reading log items in memcached.
+function should return C<true> for continuation of parsing process and C<false>
+if callback wants to terminate a log reading proccess (if it catched a I<TERM>
+signal for example). This method is executed up to full finish reading process
+of log items in memcached.
 
 =back
 
 =head1 NOTES
 
 This module uses a following keys for log items: I<log_counter> & I<log_N>,
-where N is positive number from 0 to max integer of perl. You can use
+where N is positive number from 0 to max integer of perl. After not-terminated
+<L/read_all> process a C<log_counter> to be reseted to "0".
+
+You can use
 L<Cache::Memcached::Fast/namespace> option or method to isolate these keys from
 your other keys.
 

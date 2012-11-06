@@ -8,16 +8,21 @@ INSTALLATION
 
 Latest release of this module is available from CPAN:
 
-  TODO
+    http://search.cpan.org/dist/Cache-Memcached-Fast-Logger/
+
+Developer release can be reached from GitHub:
+
+    https://github.com/Perlover/Cache-Memcached-Fast-Logger.git
 
 To install this module type the following:
 
-   perl Makefile.PL
-   make
-   make test
-   make install
+    perl Makefile.PL
+    make
+    make test
+    make install
 
-By default memcached tests are disabled. For enabling you should run tests as:
+By default memcached tests are disabled and passed as successful. For enabling
+you should run tests as:
 
 MEMCACHED_SERVER=socket_path_or_ip_address_with_port make test
 
@@ -37,7 +42,9 @@ perldoc command.
 
 BUGS
 
-    TODO
+    Please use a GitHun Issue's system for bug submitting:
+    
+    https://github.com/Perlover/Cache-Memcached-Fast-Logger/issues
 
 COPYRIGHT AND LICENCE
 
