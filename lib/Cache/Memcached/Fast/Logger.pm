@@ -3,11 +3,14 @@ package Cache::Memcached::Fast::Logger;
 use strict;
 use warnings;
 
-our $VERSION = 0.11;
+our $VERSION = 0.12;
+
+sub store_namespace (&$);
 
 sub new {
     my ( $class, %opts ) = @_;
 
+    $opts{namespace} ||= 'logger:';
     bless \%opts, $class;
 
     \%opts;
@@ -16,34 +19,51 @@ sub new {
 sub log {
     my ( $self, $log ) = @_;
 
-    $self->{cache}->add( 'log_counter', "0" );
-    $self->{cache}->set( "log_" . $self->{cache}->incr('log_counter'), $log );
+    store_namespace {
+	$self->{cache}->add( 'log_counter', "0" );
+	$self->{cache}->set( "log_" . $self->{cache}->incr('log_counter'), $log );
+    } $self;
 }
 
 sub read_all {
     my ( $self, $sub ) = @_;
 
-    my $start = 0;
-    my $cache = $self->{cache};
-    my ( $log, $ret );
+    store_namespace {
+	my $start = 0;
+	my $cache = $self->{cache};
+	my ( $log, $ret );
 
-    TERMINATE: while (1) {
-	my ($lc) = $cache->gets('log_counter');
-	last unless defined $lc;
+	TERMINATE: while (1) {
+	    my ($lc) = $cache->gets('log_counter');
+	    last unless defined $lc;
 
-	for ( my $i = $start; $i <= $lc->[1]; $i++ ) {
-	    $sub->($log) && ( $cache->delete("log_$i"), 1 ) || last TERMINATE
-	      if ( defined( $log = $cache->get("log_$i") ) );
+	    for ( my $i = $start; $i <= $lc->[1]; $i++ ) {
+		$sub->($log) && ( $cache->delete("log_$i"), 1 ) || last TERMINATE
+		  if ( defined( $log = $cache->get("log_$i") ) );
+	    }
+
+	    $ret = $cache->cas( 'log_counter', $lc->[0], "0" );
+	    last if ! defined($ret) || $ret;
+
+	    # If we are here so some other process has modified a log queue
+	    # We try reparse queue again
+
+	    $start = $lc->[1] + 1;
 	}
+    } $self;
+}
 
-	$ret = $cache->cas( 'log_counter', $lc->[0], "0" );
-	last if ! defined($ret) || $ret;
+sub store_namespace (&$) {
+    my ( $code, $self ) = @_;
 
-	# If we are here so some other process has modified a log queue
-	# We try reparse queue again
+    my $old_namespace = $self->{cache}->namespace( $self->{namespace} );
+    my $ret = eval { $code->() };
 
-	$start = $lc->[1] + 1;
-    }
+    my $error = $@;
+    $self->{cache}->namespace( $old_namespace );
+    die if $@;
+
+    $ret;
 }
 
 1;
@@ -60,11 +80,11 @@ reading all log items to/from memcached
 
     my $logger = Cache::Memcached::Fast::Logger->new( cache => Cache::Memcached::Fast->new(...) );
 
-    # one or more processes log items to memcached like this:
-    $logger->log( { key1 => 'value1', keys2 => 'value2' } );
+    # one or more processes log items to memcached like this method:
+    $logger->log( \%item );
 
     # Other process - a parser of logs items reads all items by:
-    $logger->read_all( sub { $item = shift; ... ; 1 } );
+    $logger->read_all( sub { $item_hashref = shift; ... ; 1 } );
 
 =head1 DESCRIPTION
 
@@ -83,11 +103,33 @@ will not lose your log items)
 
 =head1 CONSTRUCTOR
 
-    my $logger = Cache::Memcached::Fast::Logger->new( cache => $cache )
+    my $logger = Cache::Memcached::Fast::Logger->new( %options )
 
-Only B<cache> option used and should be instance of L<Cache::Memcached::Fast>
+=head2 OPTIONS
+
+=over
+
+=item cache
+
+Example:
+
+    cache => Cache::Memcached::Fast->new(...)
+
+B<Required>. This option used and should be instance of L<Cache::Memcached::Fast>
 object. All options of memcached specific features should be
 defined by creation of L<Cache::Memcached::Fast> instance.
+
+=item namespace
+
+Example:
+
+    namespace => 'log_1:'
+
+B<Optional>. This namespace will be used into inside L</log> & L</read_all>
+methods and restored from outside. If not defined the namespace will be as
+I<logger:>. To see L<Cache::Memcached::Fast/namespace> in details.
+
+=back
 
 =head1 METHODS
 
@@ -115,9 +157,8 @@ This module uses a following keys for log items: I<log_counter> & I<log_N>,
 where N is positive number from 0 to max integer of perl. After not-terminated
 <L/read_all> process a C<log_counter> to be reseted to "0".
 
-You can use
-L<Cache::Memcached::Fast/namespace> option or method to isolate these keys from
-your other keys.
+You can use L<Cache::Memcached::Fast/namespace> option or same method to isolate
+these keys from your other keys.
 
 =head1 AUTHOR
 

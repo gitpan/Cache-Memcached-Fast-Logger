@@ -4,6 +4,7 @@ author:
   - 'Perlover <perlover@perlover.com>'
 build_requires:
   ExtUtils::MakeMaker: 6.36
+  Test::More: 0
 configure_requires:
   ExtUtils::MakeMaker: 6.36
 distribution_type: module
@@ -22,4 +23,5 @@ requires:
   Cache::Memcached::Fast: 0
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.11
+  repository: git://github.com/Perlover/Cache-Memcached-Fast-Logger.git
+version: 0.12

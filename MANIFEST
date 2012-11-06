@@ -1,9 +1,11 @@
+Changes
 inc/Module/Install.pm
 inc/Module/Install/Base.pm
 inc/Module/Install/Can.pm
 inc/Module/Install/Fetch.pm
 inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
+inc/Module/Install/Repository.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/Cache/Memcached/Fast/Logger.pm
@@ -16,3 +18,4 @@ MYMETA.yml
 README
 t/00_compile.t
 t/01_memcached_test.t
+t/02_namespace.t

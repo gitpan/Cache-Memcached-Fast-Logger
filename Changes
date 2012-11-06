@@ -1,0 +1,8 @@
+0.12
+    + Added 'namespace' option in constructor and test for it
+
+0.11
+    - Some doc fixes
+
+0.10
+    + First release
