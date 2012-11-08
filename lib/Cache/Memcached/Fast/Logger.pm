@@ -3,7 +3,7 @@ package Cache::Memcached::Fast::Logger;
 use strict;
 use warnings;
 
-our $VERSION = 0.12;
+our $VERSION = 0.13;
 
 sub store_namespace (&$);
 
@@ -78,6 +78,8 @@ reading all log items to/from memcached
 
 =head1 SYNOPSIS
 
+    use Cache::Memcached::Fast::Logger;
+
     my $logger = Cache::Memcached::Fast::Logger->new( cache => Cache::Memcached::Fast->new(...) );
 
     # one or more processes log items to memcached like this method:
@@ -144,23 +146,23 @@ L<Cache::Memcached::Fast>.
 
 C<$cb> is callback function (parser of one log item). It is called (by this way
 C<< $cb->( $log_item ) >>) for every item of log item written to memcached. This
-function should return C<true> for continuation of parsing process and C<false>
-if callback wants to terminate a log reading proccess (if it catched a I<TERM>
-signal for example). This method is executed up to full finish reading process
-of log items in memcached.
+function should return C<true> for continuation of parsing process (a log item
+will be deleted from cache) and C<false> if callback wants to terminate a log
+reading proccess (a log item will not be deleted from cache so one will be read
+in next C<read_all> again. It feature can be used for catching I<TERM> signal
+for termination for example). This method is executed up to full reading process
+of log items from memcached.
 
 =back
 
 =head1 NOTES
 
-This module uses a following keys for log items: I<log_counter> & I<log_N>,
-where N is positive number from 0 to max integer of perl. After not-terminated
-<L/read_all> process a C<log_counter> to be reseted to "0".
+This module uses a following keys for log items (in C<namespace> defined through
+same option): I<log_counter> & I<log_N>, where N is positive number from 0 to
+max integer of perl. After non-terminated <L/read_all> process a C<log_counter>
+will be reseted to "0" (other processes will log from "0" again).
 
-You can use L<Cache::Memcached::Fast/namespace> option or same method to isolate
-these keys from your other keys.
-
-=head1 AUTHOR
+head1 AUTHOR
 
 This module has been written by Perlover <perlover@perlover.com>, 2012 year
 
