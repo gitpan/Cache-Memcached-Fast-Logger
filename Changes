@@ -1,3 +1,8 @@
+0.14
+    *) Update inc::Module::Install 1.04 -> 1.06
+    (the bug in this module - http://weblog.bulknews.net/post/33907905561/do-not-ship-modules-with-module-install-1-04)
+    +) Cache::Memcached::Fast::Logger::log method now generates warning in case of failure
+
 0.13
     *) Some doc fixes
 0.12

@@ -3,7 +3,7 @@ package Cache::Memcached::Fast::Logger;
 use strict;
 use warnings;
 
-our $VERSION = 0.13;
+our $VERSION = 0.14;
 
 sub store_namespace (&$);
 
@@ -20,8 +20,12 @@ sub log {
     my ( $self, $log ) = @_;
 
     store_namespace {
-	$self->{cache}->add( 'log_counter', "0" );
-	$self->{cache}->set( "log_" . $self->{cache}->incr('log_counter'), $log );
+	my $new_counter;
+
+	warn "Cannot increment counter - maybe the connect to memcached was loosed"
+	  if (   ! defined $self->{cache}->add( 'log_counter', "0" )
+	      || ! defined ( $new_counter = $self->{cache}->incr('log_counter') )
+	      || ! defined $self->{cache}->set( "log_" . $new_counter, $log ) );
     } $self;
 }
 
